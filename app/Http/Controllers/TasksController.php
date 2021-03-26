@@ -15,11 +15,14 @@ class TasksController extends Controller
     public function index()
     {
         $tasks=Task::all();
-        
         return view("tasks.index",[
             "tasks" => $tasks,
         ]);
+    
+        
+        
     }
+            
 
     /**
      * Show the form for creating a new resource.
@@ -48,10 +51,19 @@ class TasksController extends Controller
             "content" => "required",
         ]);
         
-        $task=new Task;
+        /*$task=new Task;
         $task->status=$request->status;
         $task->content=$request->content;
-        $task->save();
+        $task->save();*/
+        
+        
+        // 認証済みユーザ（閲覧者）の投稿として作成（リクエストされた値をもとに作成）
+        $request->user()->tasks()->create([
+            'content' => $request->content,
+            'status' => $request->status,
+        ]);
+        
+            
         
         return redirect("/");
     }
@@ -66,9 +78,14 @@ class TasksController extends Controller
     {
         $task=Task::findOrFail($id);
         
-        return view("tasks.show",[
-            "task" => $task,
-        ]);
+        if (\Auth::id() === $task->user_id){
+            return view("tasks.show",[
+                "task" => $task,
+            ]);
+            
+        }
+        
+        return redirect("/");
     }
 
     /**
@@ -81,9 +98,14 @@ class TasksController extends Controller
     {
         $task=Task::findOrFail($id);
         
-        return view("tasks.edit",[
-            "task" => $task,
-        ]);
+        if (\Auth::id() === $task->user_id){
+            return view("tasks.edit",[
+                "task" => $task,
+            ]);
+            
+        }
+        
+        return redirect("/");
     }
 
     /**
@@ -101,12 +123,20 @@ class TasksController extends Controller
         ]);
         
         $task=Task::findOrFail($id);
-        $task->status=$request->status;
+        /*$task->status=$request->status;
         $task->content=$request->content;
-        $task->save();
+        $task->save();*/
         
+        if (\Auth::id() === $task->user_id){
+            $request->user()->tasks()->update([
+                'content' => $request->content,
+                'status' => $request->status,
+            ]);
+            
+        }
         return redirect("/");
     }
+        
 
     /**
      * Remove the specified resource from storage.
@@ -118,7 +148,12 @@ class TasksController extends Controller
     {
         $task=Task::findOrFail($id);
         
-        $task->delete();
+        // $task->delete();
+        
+        // 認証済みユーザ（閲覧者）がその投稿の所有者である場合は、投稿を削除
+        if (\Auth::id() === $task->user_id) {
+            $task->delete();
+        }
         
         return redirect("/");
     }
